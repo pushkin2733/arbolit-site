@@ -35,10 +35,12 @@ pages.forEach((page) => {
     });
 });
 
-const mailEnabled = process.env.MAIL_ENABLED !== 'false'
-    && Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+const brevoEnabled = Boolean(process.env.BREVO_API_KEY);
+const smtpEnabled = Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+const mailEnabled = process.env.MAIL_ENABLED !== 'false' && (brevoEnabled || smtpEnabled);
+const mailProvider = brevoEnabled ? 'brevo' : (smtpEnabled ? 'smtp' : 'disabled');
 
-const transporter = mailEnabled
+const transporter = smtpEnabled
     ? nodemailer.createTransport({
         host: process.env.EMAIL_HOST || 'smtp.yandex.com',
         port: Number(process.env.EMAIL_PORT || 465),
@@ -74,24 +76,19 @@ function normalizeOrderData(body) {
 
 function describeMailError(error) {
     return [
+        error.provider,
         error.code,
         error.command,
         error.responseCode,
         error.response,
+        error.status,
+        error.statusText,
         error.message
     ].filter(Boolean).join(' | ');
 }
 
-async function sendOrderEmail(order) {
-    if (!transporter) {
-        return 'disabled';
-    }
-
-    await transporter.sendMail({
-        from: `"Арболит" <${process.env.EMAIL_USER}>`,
-        to: process.env.ADMIN_EMAIL || process.env.EMAIL_USER,
-        subject: `Новый заказ №${order.orderNumber}`,
-        html: `
+function buildOrderEmailHtml(order) {
+    return `
             <h2>Новый заказ на арболит</h2>
             <p><strong>Номер заказа:</strong> ${order.orderNumber}</p>
             <p><strong>Дата:</strong> ${order.createdAt}</p>
@@ -102,10 +99,86 @@ async function sendOrderEmail(order) {
             <p><strong>Количество:</strong> ${order.quantity}</p>
             <p><strong>Стоимость:</strong> ${order.price}</p>
             <p><strong>Комментарий:</strong> ${order.comment || '—'}</p>
-        `
+        `;
+}
+
+async function sendBrevoEmail({ subject, html }) {
+    const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
+    const senderName = process.env.BREVO_SENDER_NAME || 'Arbolit';
+    const toEmail = process.env.ADMIN_EMAIL || senderEmail;
+
+    if (!senderEmail || !toEmail) {
+        const error = new Error('BREVO_SENDER_EMAIL/EMAIL_USER and ADMIN_EMAIL are required for Brevo.');
+        error.provider = 'brevo';
+        throw error;
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    try {
+        const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+            method: 'POST',
+            headers: {
+                accept: 'application/json',
+                'api-key': process.env.BREVO_API_KEY,
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+                sender: {
+                    email: senderEmail,
+                    name: senderName
+                },
+                to: [
+                    {
+                        email: toEmail
+                    }
+                ],
+                subject,
+                htmlContent: html
+            }),
+            signal: controller.signal
+        });
+
+        const responseText = await response.text();
+
+        if (!response.ok) {
+            const error = new Error(responseText || 'Brevo rejected the email.');
+            error.provider = 'brevo';
+            error.status = response.status;
+            error.statusText = response.statusText;
+            throw error;
+        }
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+async function sendConfiguredEmail({ subject, html }) {
+    if (brevoEnabled) {
+        await sendBrevoEmail({ subject, html });
+        return 'sent-brevo';
+    }
+
+    if (!transporter) {
+        return 'disabled';
+    }
+
+    await transporter.sendMail({
+        from: `"Арболит" <${process.env.EMAIL_USER}>`,
+        to: process.env.ADMIN_EMAIL || process.env.EMAIL_USER,
+        subject,
+        html
     });
 
-    return 'sent';
+    return 'sent-smtp';
+}
+
+async function sendOrderEmail(order) {
+    return sendConfiguredEmail({
+        subject: `Новый заказ №${order.orderNumber}`,
+        html: buildOrderEmailHtml(order)
+    });
 }
 
 function sendOrderEmailInBackground(order) {
@@ -130,7 +203,8 @@ app.get('/api/health', (req, res) => {
     res.json({
         success: true,
         database: dbPath,
-        mailEnabled
+        mailEnabled,
+        mailProvider
     });
 });
 
@@ -166,15 +240,14 @@ app.post('/api/mail/test', async (req, res) => {
     }
 
     try {
-        await transporter.sendMail({
-            from: `"Арболит" <${process.env.EMAIL_USER}>`,
-            to: process.env.ADMIN_EMAIL || process.env.EMAIL_USER,
+        const mailStatus = await sendConfiguredEmail({
             subject: 'Тест уведомлений Арболит',
             html: '<p>Если вы получили это письмо, SMTP-уведомления работают.</p>'
         });
 
         res.json({
             success: true,
+            mailStatus,
             message: 'Тестовое письмо отправлено.'
         });
     } catch (error) {

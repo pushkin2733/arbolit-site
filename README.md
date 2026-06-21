@@ -53,13 +53,23 @@ Start command: npm start
 ```env
 PORT=3000
 MAIL_ENABLED=true
+BREVO_API_KEY=your-brevo-api-key
+BREVO_SENDER_EMAIL=your-verified-sender@example.com
+BREVO_SENDER_NAME=Arbolit
+ADMIN_EMAIL=manager@example.com
+```
+
+On Railway, Brevo is recommended because it sends mail over HTTPS/443. SMTP ports can time out on some platforms.
+
+SMTP fallback variables:
+
+```env
 EMAIL_HOST=smtp.yandex.ru
 EMAIL_PORT=465
 EMAIL_SECURE=true
 EMAIL_TLS_SERVERNAME=smtp.yandex.ru
 EMAIL_USER=your-mail@yandex.ru
 EMAIL_PASS=your-app-password
-ADMIN_EMAIL=manager@example.com
 ```
 
 Обычно `PORT` можно не задавать вручную: многие хостинги сами передают его приложению. `DB_PATH` тоже можно не задавать на Railway, если подключен Volume. Для Яндекс.Почты нужен пароль приложения, а не обычный пароль от почты.
