@@ -53,6 +53,15 @@ Start command: npm start
 ```env
 PORT=3000
 MAIL_ENABLED=true
+TELEGRAM_BOT_TOKEN=your-telegram-bot-token
+TELEGRAM_CHAT_ID=your-telegram-chat-id
+```
+
+Telegram is the recommended free notification channel on Railway. Create a bot via `@BotFather`, send any message to the bot, then get your chat id from `https://api.telegram.org/bot<token>/getUpdates`.
+
+SMTP fallback variables:
+
+```env
 EMAIL_HOST=smtp.yandex.ru
 EMAIL_PORT=465
 EMAIL_SECURE=true

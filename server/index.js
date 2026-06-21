@@ -35,9 +35,10 @@ pages.forEach((page) => {
     });
 });
 
+const telegramEnabled = Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID);
 const smtpEnabled = Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
-const mailEnabled = process.env.MAIL_ENABLED !== 'false' && smtpEnabled;
-const mailProvider = smtpEnabled ? 'smtp' : 'disabled';
+const mailEnabled = process.env.MAIL_ENABLED !== 'false' && (telegramEnabled || smtpEnabled);
+const mailProvider = telegramEnabled ? 'telegram' : (smtpEnabled ? 'smtp' : 'disabled');
 
 const transporter = smtpEnabled
     ? nodemailer.createTransport({
@@ -78,8 +79,11 @@ function describeMailError(error) {
         error.provider,
         error.code,
         error.command,
+        error.description,
         error.responseCode,
         error.response,
+        error.status,
+        error.statusText,
         error.message
     ].filter(Boolean).join(' | ');
 }
@@ -99,7 +103,65 @@ function buildOrderEmailHtml(order) {
         `;
 }
 
-async function sendConfiguredEmail({ subject, html }) {
+function buildOrderText(order) {
+    return [
+        `Новый заказ ${order.orderNumber}`,
+        `Дата: ${order.createdAt}`,
+        `Клиент: ${order.name}`,
+        `Телефон: ${order.phone}`,
+        `Email: ${order.email}`,
+        `Продукция: ${order.product}`,
+        `Количество: ${order.quantity}`,
+        `Стоимость: ${order.price}`,
+        `Комментарий: ${order.comment || '—'}`
+    ].join('\n');
+}
+
+async function sendTelegramMessage(text) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: {
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+                chat_id: process.env.TELEGRAM_CHAT_ID,
+                text
+            }),
+            signal: controller.signal
+        });
+
+        const responseText = await response.text();
+
+        if (!response.ok) {
+            let responseBody = {};
+            try {
+                responseBody = JSON.parse(responseText);
+            } catch (_) {
+                responseBody = {};
+            }
+
+            const error = new Error(responseBody.description || responseText || 'Telegram rejected the message.');
+            error.provider = 'telegram';
+            error.status = response.status;
+            error.statusText = response.statusText;
+            error.description = responseBody.description;
+            throw error;
+        }
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+async function sendConfiguredEmail({ subject, html, text }) {
+    if (telegramEnabled) {
+        await sendTelegramMessage(text || subject);
+        return 'sent-telegram';
+    }
+
     if (!transporter) {
         return 'disabled';
     }
@@ -117,13 +179,14 @@ async function sendConfiguredEmail({ subject, html }) {
 async function sendOrderEmail(order) {
     return sendConfiguredEmail({
         subject: `Новый заказ №${order.orderNumber}`,
-        html: buildOrderEmailHtml(order)
+        html: buildOrderEmailHtml(order),
+        text: buildOrderText(order)
     });
 }
 
 function sendOrderEmailInBackground(order) {
     if (!mailEnabled) {
-        updateMailStatus(order.orderNumber, 'disabled', 'MAIL_ENABLED=false или не указаны EMAIL_USER/EMAIL_PASS');
+        updateMailStatus(order.orderNumber, 'disabled', 'MAIL_ENABLED=false или не указаны TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID или EMAIL_USER/EMAIL_PASS');
         return;
     }
 
@@ -182,7 +245,8 @@ app.post('/api/mail/test', async (req, res) => {
     try {
         const mailStatus = await sendConfiguredEmail({
             subject: 'Тест уведомлений Арболит',
-            html: '<p>Если вы получили это письмо, уведомления работают.</p>'
+            html: '<p>Если вы получили это письмо, уведомления работают.</p>',
+            text: 'Тест уведомлений Арболит: уведомления работают.'
         });
 
         res.json({
