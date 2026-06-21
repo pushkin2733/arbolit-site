@@ -35,10 +35,12 @@ pages.forEach((page) => {
     });
 });
 
+const formSubmitEmail = process.env.FORMSUBMIT_EMAIL;
+const formSubmitEnabled = Boolean(formSubmitEmail);
 const brevoEnabled = Boolean(process.env.BREVO_API_KEY);
 const smtpEnabled = Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
-const mailEnabled = process.env.MAIL_ENABLED !== 'false' && (brevoEnabled || smtpEnabled);
-const mailProvider = brevoEnabled ? 'brevo' : (smtpEnabled ? 'smtp' : 'disabled');
+const mailEnabled = process.env.MAIL_ENABLED !== 'false' && (formSubmitEnabled || brevoEnabled || smtpEnabled);
+const mailProvider = formSubmitEnabled ? 'formsubmit' : (brevoEnabled ? 'brevo' : (smtpEnabled ? 'smtp' : 'disabled'));
 
 const transporter = smtpEnabled
     ? nodemailer.createTransport({
@@ -102,6 +104,62 @@ function buildOrderEmailHtml(order) {
         `;
 }
 
+function buildOrderText(order) {
+    return [
+        `Новый заказ ${order.orderNumber}`,
+        `Дата: ${order.createdAt}`,
+        `Клиент: ${order.name}`,
+        `Телефон: ${order.phone}`,
+        `Email: ${order.email}`,
+        `Продукция: ${order.product}`,
+        `Количество: ${order.quantity}`,
+        `Стоимость: ${order.price}`,
+        `Комментарий: ${order.comment || '—'}`
+    ].join('\n');
+}
+
+async function sendFormSubmitEmail({ subject, text, fields = {} }) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    try {
+        const response = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(formSubmitEmail)}`, {
+            method: 'POST',
+            headers: {
+                accept: 'application/json',
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+                _subject: subject,
+                _template: 'table',
+                _captcha: 'false',
+                message: text,
+                ...fields
+            }),
+            signal: controller.signal
+        });
+
+        const responseText = await response.text();
+
+        if (!response.ok) {
+            let responseBody = null;
+            try {
+                responseBody = JSON.parse(responseText);
+            } catch (_) {
+                responseBody = null;
+            }
+
+            const error = new Error(responseBody?.message || responseText || 'FormSubmit rejected the email.');
+            error.provider = 'formsubmit';
+            error.status = response.status;
+            error.statusText = response.statusText;
+            throw error;
+        }
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
 async function sendBrevoEmail({ subject, html }) {
     const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
     const senderName = process.env.BREVO_SENDER_NAME || 'Arbolit';
@@ -154,7 +212,16 @@ async function sendBrevoEmail({ subject, html }) {
     }
 }
 
-async function sendConfiguredEmail({ subject, html }) {
+async function sendConfiguredEmail({ subject, html, text, fields }) {
+    if (formSubmitEnabled) {
+        await sendFormSubmitEmail({
+            subject,
+            text: text || subject,
+            fields
+        });
+        return 'sent-formsubmit';
+    }
+
     if (brevoEnabled) {
         await sendBrevoEmail({ subject, html });
         return 'sent-brevo';
@@ -177,13 +244,25 @@ async function sendConfiguredEmail({ subject, html }) {
 async function sendOrderEmail(order) {
     return sendConfiguredEmail({
         subject: `Новый заказ №${order.orderNumber}`,
-        html: buildOrderEmailHtml(order)
+        html: buildOrderEmailHtml(order),
+        text: buildOrderText(order),
+        fields: {
+            orderNumber: order.orderNumber,
+            createdAt: order.createdAt,
+            name: order.name,
+            phone: order.phone,
+            email: order.email,
+            product: order.product,
+            quantity: order.quantity,
+            price: order.price,
+            comment: order.comment || ''
+        }
     });
 }
 
 function sendOrderEmailInBackground(order) {
     if (!mailEnabled) {
-        updateMailStatus(order.orderNumber, 'disabled', 'MAIL_ENABLED=false или не указаны EMAIL_USER/EMAIL_PASS');
+        updateMailStatus(order.orderNumber, 'disabled', 'MAIL_ENABLED=false или не настроены FORMSUBMIT_EMAIL, BREVO_API_KEY или EMAIL_USER/EMAIL_PASS');
         return;
     }
 
@@ -242,7 +321,8 @@ app.post('/api/mail/test', async (req, res) => {
     try {
         const mailStatus = await sendConfiguredEmail({
             subject: 'Тест уведомлений Арболит',
-            html: '<p>Если вы получили это письмо, SMTP-уведомления работают.</p>'
+            html: '<p>Если вы получили это письмо, уведомления работают.</p>',
+            text: 'Тест уведомлений Арболит: уведомления работают.'
         });
 
         res.json({
