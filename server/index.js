@@ -35,20 +35,18 @@ pages.forEach((page) => {
     });
 });
 
-const unisenderEnabled = Boolean(process.env.UNISENDER_API_KEY);
-const brevoEnabled = Boolean(process.env.BREVO_API_KEY);
 const smtpEnabled = Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
-const mailEnabled = process.env.MAIL_ENABLED !== 'false' && (unisenderEnabled || brevoEnabled || smtpEnabled);
-const mailProvider = unisenderEnabled ? 'unisender' : (brevoEnabled ? 'brevo' : (smtpEnabled ? 'smtp' : 'disabled'));
+const mailEnabled = process.env.MAIL_ENABLED !== 'false' && smtpEnabled;
+const mailProvider = smtpEnabled ? 'smtp' : 'disabled';
 
 const transporter = smtpEnabled
     ? nodemailer.createTransport({
         host: process.env.EMAIL_HOST || 'smtp.yandex.com',
         port: Number(process.env.EMAIL_PORT || 465),
         secure: process.env.EMAIL_SECURE !== 'false',
-        connectionTimeout: 3000,
-        greetingTimeout: 3000,
-        socketTimeout: 5000,
+        connectionTimeout: 15000,
+        greetingTimeout: 15000,
+        socketTimeout: 20000,
         auth: {
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_PASS
@@ -82,8 +80,6 @@ function describeMailError(error) {
         error.command,
         error.responseCode,
         error.response,
-        error.status,
-        error.statusText,
         error.message
     ].filter(Boolean).join(' | ');
 }
@@ -103,150 +99,7 @@ function buildOrderEmailHtml(order) {
         `;
 }
 
-function buildOrderText(order) {
-    return [
-        `Новый заказ ${order.orderNumber}`,
-        `Дата: ${order.createdAt}`,
-        `Клиент: ${order.name}`,
-        `Телефон: ${order.phone}`,
-        `Email: ${order.email}`,
-        `Продукция: ${order.product}`,
-        `Количество: ${order.quantity}`,
-        `Стоимость: ${order.price}`,
-        `Комментарий: ${order.comment || '—'}`
-    ].join('\n');
-}
-
-async function sendUnisenderEmail({ subject, html }) {
-    const recipientEmail = process.env.ADMIN_EMAIL;
-    const senderEmail = process.env.UNISENDER_SENDER_EMAIL || process.env.EMAIL_USER;
-    const senderName = process.env.UNISENDER_SENDER_NAME || 'Arbolit';
-    const listId = process.env.UNISENDER_LIST_ID;
-
-    if (!recipientEmail || !senderEmail || !listId) {
-        const error = new Error('ADMIN_EMAIL, UNISENDER_SENDER_EMAIL and UNISENDER_LIST_ID are required for Unisender.');
-        error.provider = 'unisender';
-        throw error;
-    }
-
-    const params = new URLSearchParams({
-        format: 'json',
-        api_key: process.env.UNISENDER_API_KEY,
-        email: recipientEmail,
-        sender_name: senderName,
-        sender_email: senderEmail,
-        subject,
-        body: html,
-        list_id: listId,
-        lang: 'ru',
-        error_checking: '1'
-    });
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
-
-    try {
-        const response = await fetch('https://api.unisender.com/ru/api/sendEmail', {
-            method: 'POST',
-            headers: {
-                accept: 'application/json',
-                'content-type': 'application/x-www-form-urlencoded'
-            },
-            body: params,
-            signal: controller.signal
-        });
-
-        const responseText = await response.text();
-        let responseBody = null;
-        try {
-            responseBody = JSON.parse(responseText);
-        } catch (_) {
-            responseBody = null;
-        }
-
-        if (!response.ok) {
-            const error = new Error(responseBody?.error || responseText || 'Unisender rejected the email.');
-            error.provider = 'unisender';
-            error.status = response.status;
-            error.statusText = response.statusText;
-            throw error;
-        }
-
-        const resultErrors = responseBody?.result?.flatMap((item) => item.errors || []) || [];
-        if (responseBody?.error || resultErrors.length > 0) {
-            const message = responseBody?.error || resultErrors.map((item) => `${item.code}: ${item.message}`).join('; ');
-            const error = new Error(message || 'Unisender rejected the email.');
-            error.provider = 'unisender';
-            throw error;
-        }
-    } finally {
-        clearTimeout(timeout);
-    }
-}
-
-async function sendBrevoEmail({ subject, html }) {
-    const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
-    const senderName = process.env.BREVO_SENDER_NAME || 'Arbolit';
-    const toEmail = process.env.ADMIN_EMAIL || senderEmail;
-
-    if (!senderEmail || !toEmail) {
-        const error = new Error('BREVO_SENDER_EMAIL/EMAIL_USER and ADMIN_EMAIL are required for Brevo.');
-        error.provider = 'brevo';
-        throw error;
-    }
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
-
-    try {
-        const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-            method: 'POST',
-            headers: {
-                accept: 'application/json',
-                'api-key': process.env.BREVO_API_KEY,
-                'content-type': 'application/json'
-            },
-            body: JSON.stringify({
-                sender: {
-                    email: senderEmail,
-                    name: senderName
-                },
-                to: [
-                    {
-                        email: toEmail
-                    }
-                ],
-                subject,
-                htmlContent: html
-            }),
-            signal: controller.signal
-        });
-
-        const responseText = await response.text();
-
-        if (!response.ok) {
-            const error = new Error(responseText || 'Brevo rejected the email.');
-            error.provider = 'brevo';
-            error.status = response.status;
-            error.statusText = response.statusText;
-            throw error;
-        }
-    } finally {
-        clearTimeout(timeout);
-    }
-}
-
 async function sendConfiguredEmail({ subject, html }) {
-    if (unisenderEnabled) {
-        await sendUnisenderEmail({ subject, html });
-        return 'sent-unisender';
-    }
-
-    if (brevoEnabled) {
-        await sendBrevoEmail({ subject, html });
-        return 'sent-brevo';
-    }
-
     if (!transporter) {
         return 'disabled';
     }
@@ -270,7 +123,7 @@ async function sendOrderEmail(order) {
 
 function sendOrderEmailInBackground(order) {
     if (!mailEnabled) {
-        updateMailStatus(order.orderNumber, 'disabled', 'MAIL_ENABLED=false или не настроены UNISENDER_API_KEY, BREVO_API_KEY или EMAIL_USER/EMAIL_PASS');
+        updateMailStatus(order.orderNumber, 'disabled', 'MAIL_ENABLED=false или не указаны EMAIL_USER/EMAIL_PASS');
         return;
     }
 
