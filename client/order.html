@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оформление заказа — Арболит</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        .order-container {
+            max-width: 800px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #455A64;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: #2E7D32;
+            outline: none;
+        }
+
+        .file-upload {
+            border: 2px dashed #2E7D32;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .file-upload:hover {
+            background: #f8f9fa;
+        }
+
+        .btn-submit {
+            background: #2E7D32;
+            color: white;
+            padding: 16px 40px;
+            font-size: 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 30px;
+        }
+
+        .btn-submit:hover {
+            background: #1B5E20;
+        }
+
+        .success-message {
+            display: none;
+            background: #e8f5e9;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <h1>АРБОЛИТ</h1>
+            </div>
+            <nav class="nav">
+                <a href="index.html">Главная</a>
+                <a href="products.html">Продукция</a>
+                <a href="calculator.html">Калькулятор</a>
+                <a href="order.html" class="active">Оформить заказ</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="order-container">
+            <h1 style="text-align: center; margin-bottom: 10px;">Оформление заказа</h1>
+            <p style="text-align: center; color: #666; margin-bottom: 40px;">Заполните данные, и мы свяжемся с вами в ближайшее время</p>
+
+            <form id="order-form">
+                <div class="form-group">
+                    <label>Марка блока</label>
+                    <input type="text" id="product-name" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label>Количество / Объём</label>
+                    <input type="text" id="quantity-display" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label>Ориентировочная стоимость</label>
+                    <input type="text" id="total-price" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label>Ваше имя <span style="color:red">*</span></label>
+                    <input type="text" id="name" required placeholder="Иван Иванов">
+                </div>
+
+                <div class="form-group">
+                    <label>Телефон <span style="color:red">*</span></label>
+                    <input type="tel" id="phone" required placeholder="+7 (___) ___-__-__">
+                </div>
+
+                <div class="form-group">
+                    <label>E-mail <span style="color:red">*</span></label>
+                    <input type="email" id="email" required placeholder="example@mail.ru">
+                </div>
+
+                <div class="form-group">
+                    <label>Комментарий к заказу</label>
+                    <textarea id="comment" rows="4" placeholder="Дополнительная информация: адрес доставки, срочность и т.д."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Прикрепить файлы (до 2 шт.)</label>
+                    <div class="file-upload" id="file-upload-area">
+                        <p>Нажмите или перетащите файлы сюда</p>
+                        <p style="font-size: 14px; color: #666;">(jpg, png, pdf • макс. 10 МБ каждый)</p>
+                        <input type="file" id="files" multiple accept=".jpg,.jpeg,.png,.pdf" style="display:none;">
+                    </div>
+                    <div id="file-list" style="margin-top: 10px;"></div>
+                </div>
+
+                <button type="submit" class="btn-submit">Отправить заказ</button>
+            </form>
+
+            <!-- Сообщение об успехе -->
+            <div id="success-message" class="success-message">
+                <h2>✅ Заказ успешно отправлен!</h2>
+                <p>Мы свяжемся с вами в ближайшее время по указанному телефону или email.</p>
+                <p>Номер вашего заказа: <strong id="order-number"></strong></p>
+                <a href="index.html" class="btn btn-primary" style="display:inline-block; margin-top:20px;">Вернуться на главную</a>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>© 2026 ООО "Арболит" — Новосибирск</p>
+        </div>
+    </footer>
+
+    <script src="js/order.js"></script>
+</body>
+</html>

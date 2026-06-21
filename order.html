@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оформление заказа — Арболит</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <a class="logo" href="index.html">
+                <h1>АРБОЛИТ</h1>
+                <p>Камень-на-Оби</p>
+            </a>
+            <nav class="nav" aria-label="Основная навигация">
+                <a href="index.html">Главная</a>
+                <a href="products.html">Продукция</a>
+                <a href="calculator.html">Калькулятор</a>
+                <a href="order.html" class="active">Оформить заказ</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="page-title">
+            <div class="container">
+                <h1>Оформление заказа</h1>
+                <p>Оставьте контакты, и менеджер уточнит наличие, доставку и итоговую стоимость.</p>
+            </div>
+        </section>
+
+        <section class="container">
+            <div class="order-container">
+                <form id="order-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="product-name">Марка блока</label>
+                            <input type="text" id="product-name" readonly>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="quantity-display">Количество / объем</label>
+                            <input type="text" id="quantity-display" readonly>
+                        </div>
+
+                        <div class="form-group full">
+                            <label for="total-price">Ориентировочная стоимость</label>
+                            <input type="text" id="total-price" readonly>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="name">Ваше имя <span aria-hidden="true">*</span></label>
+                            <input type="text" id="name" required placeholder="Иван Иванов">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="phone">Телефон <span aria-hidden="true">*</span></label>
+                            <input type="tel" id="phone" required placeholder="+7 (___) ___-__-__">
+                        </div>
+
+                        <div class="form-group full">
+                            <label for="email">E-mail <span aria-hidden="true">*</span></label>
+                            <input type="email" id="email" required placeholder="example@mail.ru">
+                        </div>
+
+                        <div class="form-group full">
+                            <label for="comment">Комментарий к заказу</label>
+                            <textarea id="comment" rows="4" placeholder="Адрес доставки, желаемые сроки, особенности объекта"></textarea>
+                        </div>
+
+                        <div class="form-group full">
+                            <label for="files">Прикрепить файлы</label>
+                            <div class="file-upload" id="file-upload-area">
+                                <p>Нажмите или перетащите файлы сюда</p>
+                                <p>jpg, png, pdf • максимум 2 файла по 10 МБ</p>
+                                <input type="file" id="files" multiple accept=".jpg,.jpeg,.png,.pdf" hidden>
+                            </div>
+                            <div id="file-list" style="margin-top: 10px;"></div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-submit">Отправить заказ</button>
+                    <div id="form-status" class="form-status" style="display: none;"></div>
+                </form>
+
+                <div id="success-message" class="success-message" style="display: none;">
+                    <h2>Заказ успешно отправлен</h2>
+                    <p>Мы свяжемся с вами по указанному телефону или email.</p>
+                    <p>Номер вашего заказа: <strong id="order-number"></strong></p>
+                    <a href="index.html" class="btn btn-primary" style="margin-top: 18px;">Вернуться на главную</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>© 2026 ООО «Арболит» — Камень-на-Оби</p>
+            <p>Заявка сохраняется на сервере в учебной системе учета.</p>
+        </div>
+    </footer>
+
+    <script src="js/order.js"></script>
+</body>
+</html>

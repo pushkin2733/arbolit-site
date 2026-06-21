@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор арболитовых блоков — Арболит</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        .calculator-container {
+            max-width: 900px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f5f5f5;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 18px;
+            text-align: center;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: #2E7D32;
+            color: white;
+        }
+
+        .calculator-content {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #455A64;
+        }
+
+        select, input[type="number"] {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        select:focus, input[type="number"]:focus {
+            border-color: #2E7D32;
+            outline: none;
+        }
+
+        .result {
+            background: #e8f5e9;
+            padding: 25px;
+            border-radius: 12px;
+            margin: 30px 0;
+            border-left: 6px solid #2E7D32;
+        }
+
+        .btn-calculate {
+            background: #2E7D32;
+            color: white;
+            padding: 16px 40px;
+            font-size: 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .btn-calculate:hover {
+            background: #1B5E20;
+        }
+
+        .order-btn {
+            background: #455A64;
+            color: white;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <h1>АРБОЛИТ</h1>
+            </div>
+            <nav class="nav">
+                <a href="index.html">Главная</a>
+                <a href="products.html">Продукция</a>
+                <a href="calculator.html" class="active">Калькулятор</a>
+                <a href="order.html">Оформить заказ</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1 style="text-align: center; margin: 40px 0 20px;">Калькулятор стоимости арболитовых блоков</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 40px;">Выберите удобный способ расчёта</p>
+
+        <div class="calculator-container">
+            <!-- Вкладки -->
+            <div class="tabs">
+                <div class="tab active" data-tab="simple">Простой расчёт</div>
+                <div class="tab" data-tab="advanced">Расчёт по размерам стен</div>
+            </div>
+
+            <!-- Простой калькулятор -->
+            <div id="simple" class="calculator-content">
+                <div class="form-group">
+                    <label>Выберите марку блока</label>
+                    <select id="product-simple">
+                        <option value="">— Выберите марку —</option>
+                        <option value="Стеновой блок" data-volume="0.03" data-price="6900">Стеновой блок (200×300×500 мм) — 6900 ₽/м³</option>
+                        <option value="Армопоясной блок" data-volume="0.03" data-price="7300">Армопоясной блок (200×300×500 мм) — 7300 ₽/м³</option>
+                        <option value="Перегородочная панель" data-volume="0.015" data-price="7500"> Перегородочная панель (100×600×800 мм) — 7500 ₽/м³</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Единица измерения</label>
+                    <select id="unit-simple">
+                        <option value="m3">м³</option>
+                        <option value="pcs">штуки</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Количество</label>
+                    <input type="number" id="quantity-simple" min="1" placeholder="Введите количество">
+                </div>
+
+                <button class="btn-calculate" id="btn-simple">Рассчитать</button>
+
+                <div id="result-simple" class="result" style="display: none;">
+                    <h3>Результат расчёта</h3>
+                    <p><strong>Объём:</strong> <span id="vol-simple"></span> м³</p>
+                    <p><strong>Количество блоков:</strong> <span id="pcs-simple"></span> шт.</p>
+                    <p><strong>Стоимость:</strong> <span id="price-simple"></span> ₽</p>
+                    
+                    <button class="btn btn-primary order-btn">Оформить заказ с этими параметрами</button>
+                </div>
+            </div>
+
+            <!-- Расширенный калькулятор -->
+<div id="advanced" class="calculator-content" style="display: none;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+        
+        <!-- Левая колонка - форма -->
+        <div>
+            <div class="form-group">
+                <label>Выберите марку блока</label>
+                <select id="product-advanced">
+                    <option value="">— Выберите марку —</option>
+                    <option value="M400" data-volume="0.0192" data-price="4500" data-thickness="0.2">М400 (толщина стены 200 мм)</option>
+                    <option value="M500" data-volume="0.0192" data-price="4800" data-thickness="0.2">М500 (толщина стены 200 мм)</option>
+                    <option value="M600" data-volume="0.0192" data-price="5200" data-thickness="0.2">М600 (толщина стены 200 мм)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Общая длина всех стен (м)</label>
+                <input type="number" id="length" step="0.1" placeholder="Например: 42.5" oninput="updateWallVisual()">
+            </div>
+
+            <div class="form-group">
+                <label>Высота стен (м)</label>
+                <input type="number" id="height" step="0.1" placeholder="Например: 3.0" oninput="updateWallVisual()">
+            </div>
+
+            <div class="form-group">
+                <label>Площадь окон (м²)</label>
+                <input type="number" id="windows" step="0.1" value="0" placeholder="0" oninput="updateWallVisual()">
+            </div>
+
+            <div class="form-group">
+                <label>Площадь дверей (м²)</label>
+                <input type="number" id="doors" step="0.1" value="0" placeholder="0" oninput="updateWallVisual()">
+            </div>
+
+            <button class="btn-calculate" id="btn-advanced">Рассчитать объём стен</button>
+        </div>
+
+        <!-- Правая колонка - визуализация -->
+        <div>
+            <label style="margin-bottom: 10px; display: block; font-weight: 500;">Визуализация стены</label>
+            <div id="wall-visual" style="
+                width: 280px; 
+                height: 220px; 
+                background: linear-gradient(to bottom, #e8f5e9, #a5d6a7);
+                border: 5px solid #2E7D32;
+                border-radius: 12px;
+                position: relative;
+                overflow: hidden;
+                margin: 0 auto;
+                box-shadow: 0 8px 25px rgba(46, 125, 50, 0.3);
+            ">
+                <!-- Длина -->
+                <div id="length-label" style="position: absolute; bottom: -28px; left: 50%; transform: translateX(-50%); background: #2E7D32; color: white; padding: 4px 14px; border-radius: 20px; font-size: 14px; white-space: nowrap;">
+                    Длина: 0 м
+                </div>
+
+                <!-- Высота -->
+                <div id="height-label" style="position: absolute; top: 50%; left: -72px; transform: rotate(-90deg); background: #2E7D32; color: white; padding: 4px 14px; border-radius: 20px; font-size: 14px; white-space: nowrap;">
+                    Высота: 0 м
+                </div>
+
+                <!-- Результаты расчёта на макете -->
+                <div id="wall-result" style="position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.95); padding: 12px; border-radius: 10px; font-size: 14px; line-height: 1.5; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    <strong>Объём:</strong> <span id="visual-volume">0</span> м³<br>
+                    <strong>Блоков:</strong> <span id="visual-pieces">0</span> шт.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Результаты расчёта под макетом -->
+    <div id="result-advanced" class="result" style="display: none; margin-top: 40px;">
+        <h3>Результат расчёта</h3>
+        <p><strong>Объём кладки:</strong> <span id="vol-adv"></span> м³</p>
+        <p><strong>Количество блоков:</strong> <span id="pcs-adv"></span> шт.</p>
+        <p><strong>Стоимость:</strong> <span id="price-adv"></span> ₽</p>
+        
+        <button class="btn btn-primary order-btn">Оформить заказ с этим расчётом</button>
+    </div>
+</div>
+
+    <div id="result-advanced" class="result" style="display: none; margin-top: 30px;">
+        <h3>Результат расчёта</h3>
+        <p><strong>Объём кладки:</strong> <span id="vol-adv"></span> м³</p>
+        <p><strong>Количество блоков:</strong> <span id="pcs-adv"></span> шт.</p>
+        <p><strong>Стоимость:</strong> <span id="price-adv"></span> ₽</p>
+        
+        <button class="btn btn-primary order-btn">Оформить заказ с этим расчётом</button>
+    </div>
+</div>
+
+    <footer>
+        <div class="container">
+            <p>© 2026 ООО "Арболит" — Новосибирск</p>
+        </div>
+    </footer>
+
+    <script src="js/calculator.js"></script>
+</body>
+</html>

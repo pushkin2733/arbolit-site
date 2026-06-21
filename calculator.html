@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор арболитовых блоков — Арболит</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <a class="logo" href="index.html">
+                <h1>АРБОЛИТ</h1>
+                <p>Камень-на-Оби</p>
+            </a>
+            <nav class="nav" aria-label="Основная навигация">
+                <a href="index.html">Главная</a>
+                <a href="products.html">Продукция</a>
+                <a href="calculator.html" class="active">Калькулятор</a>
+                <a href="order.html">Оформить заказ</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="page-title">
+            <div class="container">
+                <h1>Калькулятор стоимости</h1>
+                <p>Рассчитайте ориентировочный объем, количество блоков и сумму заказа.</p>
+            </div>
+        </section>
+
+        <section class="container">
+            <div class="calculator-container">
+                <div class="tabs" role="tablist" aria-label="Способ расчета">
+                    <button class="tab active" type="button" data-tab="simple">Простой расчет</button>
+                    <button class="tab" type="button" data-tab="advanced">Расчет по стенам</button>
+                </div>
+
+                <div id="simple" class="calculator-content">
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label for="product-simple">Марка блока</label>
+                            <select id="product-simple">
+                                <option value="">Выберите марку</option>
+                                <option value="Стеновой блок D600" data-volume="0.03" data-price="6900" data-thickness="0.3">Стеновой блок D600 (500 x 300 x 200 мм) — 6 900 ₽/м³</option>
+                                <option value="Армопоясной блок" data-volume="0.03" data-price="7300" data-thickness="0.3">Армопоясной блок (500 x 300 x 200 мм) — 7 300 ₽/м³</option>
+                                <option value="Перегородочный блок" data-volume="0.03" data-price="7500" data-thickness="0.1">Перегородочный блок (500 x 100 x 600 мм) — 7 500 ₽/м³</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="unit-simple">Единица измерения</label>
+                            <select id="unit-simple">
+                                <option value="m3">Кубометры</option>
+                                <option value="pcs">Штуки</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="quantity-simple">Количество</label>
+                            <input type="number" id="quantity-simple" min="1" step="1" placeholder="Например: 12">
+                        </div>
+                    </div>
+
+                    <button class="btn btn-calculate" id="btn-simple" type="button">Рассчитать</button>
+
+                    <div id="result-simple" class="result" style="display: none;">
+                        <h3>Результат расчета</h3>
+                        <p><strong>Объем:</strong> <span id="vol-simple"></span> м³</p>
+                        <p><strong>Количество блоков:</strong> <span id="pcs-simple"></span> шт.</p>
+                        <p><strong>Стоимость:</strong> <span id="price-simple"></span> ₽</p>
+                        <button class="btn btn-primary order-btn" type="button">Оформить заказ с этими параметрами</button>
+                    </div>
+                </div>
+
+                <div id="advanced" class="calculator-content" style="display: none;">
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label for="product-advanced">Марка блока</label>
+                            <select id="product-advanced">
+                                <option value="">Выберите марку</option>
+                                <option value="Стеновой блок D600" data-volume="0.03" data-price="6900" data-thickness="0.3">Стеновой блок D600 (толщина стены 300 мм) — 6 900 ₽/м³</option>
+                                <option value="Армопоясной блок" data-volume="0.03" data-price="7300" data-thickness="0.3">Армопоясной блок (толщина стены 300 мм) — 7 300 ₽/м³</option>
+                                <option value="Перегородочный блок" data-volume="0.03" data-price="7500" data-thickness="0.1">Перегородочный блок (толщина стены 100 мм) — 7 500 ₽/м³</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="length">Общая длина стен, м</label>
+                            <input type="number" id="length" min="0" step="0.1" placeholder="Например: 42.5">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="height">Высота стен, м</label>
+                            <input type="number" id="height" min="0" step="0.1" placeholder="Например: 3.0">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="windows">Площадь окон, м²</label>
+                            <input type="number" id="windows" min="0" step="0.1" value="0">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="doors">Площадь дверей, м²</label>
+                            <input type="number" id="doors" min="0" step="0.1" value="0">
+                        </div>
+                    </div>
+
+                    <button class="btn btn-calculate" id="btn-advanced" type="button">Рассчитать объем стен</button>
+
+                    <div id="result-advanced" class="result" style="display: none;">
+                        <h3>Результат расчета</h3>
+                        <p><strong>Объем кладки:</strong> <span id="vol-adv"></span> м³</p>
+                        <p><strong>Количество блоков:</strong> <span id="pcs-adv"></span> шт.</p>
+                        <p><strong>Стоимость:</strong> <span id="price-adv"></span> ₽</p>
+                        <button class="btn btn-primary order-btn" type="button">Оформить заказ с этим расчетом</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>© 2026 ООО «Арболит» — Камень-на-Оби</p>
+            <p>Расчет является предварительным и не включает доставку.</p>
+        </div>
+    </footer>
+
+    <script src="js/calculator.js"></script>
+</body>
+</html>

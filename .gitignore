@@ -1,0 +1,15 @@
+node_modules/
+server/node_modules/
+
+.env
+server/.env
+
+*.log
+server/*.log
+
+server/orders.db
+server/orders.db-*
+server/orders/*.json
+
+.DS_Store
+Thumbs.db
