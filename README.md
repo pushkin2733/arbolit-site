@@ -53,10 +53,14 @@ Start command: npm start
 ```env
 PORT=3000
 MAIL_ENABLED=true
-FORMSUBMIT_EMAIL=manager@example.com
+UNISENDER_API_KEY=your-unisender-api-key
+UNISENDER_LIST_ID=123
+UNISENDER_SENDER_EMAIL=your-verified-sender@example.com
+UNISENDER_SENDER_NAME=Arbolit
+ADMIN_EMAIL=manager@example.com
 ```
 
-On Railway, FormSubmit is recommended because it sends mail over HTTPS/443 and does not require SMTP access. The first submission will send an activation email to `FORMSUBMIT_EMAIL`; open it and confirm the address.
+On Railway, Unisender is recommended because it sends mail over HTTPS/443. In the Unisender account, confirm `UNISENDER_SENDER_EMAIL`, create or choose a list, and use its ID as `UNISENDER_LIST_ID`.
 
 Optional Brevo fallback:
 

@@ -35,12 +35,11 @@ pages.forEach((page) => {
     });
 });
 
-const formSubmitEmail = process.env.FORMSUBMIT_EMAIL;
-const formSubmitEnabled = Boolean(formSubmitEmail);
+const unisenderEnabled = Boolean(process.env.UNISENDER_API_KEY);
 const brevoEnabled = Boolean(process.env.BREVO_API_KEY);
 const smtpEnabled = Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
-const mailEnabled = process.env.MAIL_ENABLED !== 'false' && (formSubmitEnabled || brevoEnabled || smtpEnabled);
-const mailProvider = formSubmitEnabled ? 'formsubmit' : (brevoEnabled ? 'brevo' : (smtpEnabled ? 'smtp' : 'disabled'));
+const mailEnabled = process.env.MAIL_ENABLED !== 'false' && (unisenderEnabled || brevoEnabled || smtpEnabled);
+const mailProvider = unisenderEnabled ? 'unisender' : (brevoEnabled ? 'brevo' : (smtpEnabled ? 'smtp' : 'disabled'));
 
 const transporter = smtpEnabled
     ? nodemailer.createTransport({
@@ -118,41 +117,66 @@ function buildOrderText(order) {
     ].join('\n');
 }
 
-async function sendFormSubmitEmail({ subject, text, fields = {} }) {
+async function sendUnisenderEmail({ subject, html }) {
+    const recipientEmail = process.env.ADMIN_EMAIL;
+    const senderEmail = process.env.UNISENDER_SENDER_EMAIL || process.env.EMAIL_USER;
+    const senderName = process.env.UNISENDER_SENDER_NAME || 'Arbolit';
+    const listId = process.env.UNISENDER_LIST_ID;
+
+    if (!recipientEmail || !senderEmail || !listId) {
+        const error = new Error('ADMIN_EMAIL, UNISENDER_SENDER_EMAIL and UNISENDER_LIST_ID are required for Unisender.');
+        error.provider = 'unisender';
+        throw error;
+    }
+
+    const params = new URLSearchParams({
+        format: 'json',
+        api_key: process.env.UNISENDER_API_KEY,
+        email: recipientEmail,
+        sender_name: senderName,
+        sender_email: senderEmail,
+        subject,
+        body: html,
+        list_id: listId,
+        lang: 'ru',
+        error_checking: '1'
+    });
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
 
     try {
-        const response = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(formSubmitEmail)}`, {
+        const response = await fetch('https://api.unisender.com/ru/api/sendEmail', {
             method: 'POST',
             headers: {
                 accept: 'application/json',
-                'content-type': 'application/json'
+                'content-type': 'application/x-www-form-urlencoded'
             },
-            body: JSON.stringify({
-                _subject: subject,
-                _template: 'table',
-                _captcha: 'false',
-                message: text,
-                ...fields
-            }),
+            body: params,
             signal: controller.signal
         });
 
         const responseText = await response.text();
+        let responseBody = null;
+        try {
+            responseBody = JSON.parse(responseText);
+        } catch (_) {
+            responseBody = null;
+        }
 
         if (!response.ok) {
-            let responseBody = null;
-            try {
-                responseBody = JSON.parse(responseText);
-            } catch (_) {
-                responseBody = null;
-            }
-
-            const error = new Error(responseBody?.message || responseText || 'FormSubmit rejected the email.');
-            error.provider = 'formsubmit';
+            const error = new Error(responseBody?.error || responseText || 'Unisender rejected the email.');
+            error.provider = 'unisender';
             error.status = response.status;
             error.statusText = response.statusText;
+            throw error;
+        }
+
+        const resultErrors = responseBody?.result?.flatMap((item) => item.errors || []) || [];
+        if (responseBody?.error || resultErrors.length > 0) {
+            const message = responseBody?.error || resultErrors.map((item) => `${item.code}: ${item.message}`).join('; ');
+            const error = new Error(message || 'Unisender rejected the email.');
+            error.provider = 'unisender';
             throw error;
         }
     } finally {
@@ -212,14 +236,10 @@ async function sendBrevoEmail({ subject, html }) {
     }
 }
 
-async function sendConfiguredEmail({ subject, html, text, fields }) {
-    if (formSubmitEnabled) {
-        await sendFormSubmitEmail({
-            subject,
-            text: text || subject,
-            fields
-        });
-        return 'sent-formsubmit';
+async function sendConfiguredEmail({ subject, html }) {
+    if (unisenderEnabled) {
+        await sendUnisenderEmail({ subject, html });
+        return 'sent-unisender';
     }
 
     if (brevoEnabled) {
@@ -244,25 +264,13 @@ async function sendConfiguredEmail({ subject, html, text, fields }) {
 async function sendOrderEmail(order) {
     return sendConfiguredEmail({
         subject: `Новый заказ №${order.orderNumber}`,
-        html: buildOrderEmailHtml(order),
-        text: buildOrderText(order),
-        fields: {
-            orderNumber: order.orderNumber,
-            createdAt: order.createdAt,
-            name: order.name,
-            phone: order.phone,
-            email: order.email,
-            product: order.product,
-            quantity: order.quantity,
-            price: order.price,
-            comment: order.comment || ''
-        }
+        html: buildOrderEmailHtml(order)
     });
 }
 
 function sendOrderEmailInBackground(order) {
     if (!mailEnabled) {
-        updateMailStatus(order.orderNumber, 'disabled', 'MAIL_ENABLED=false или не настроены FORMSUBMIT_EMAIL, BREVO_API_KEY или EMAIL_USER/EMAIL_PASS');
+        updateMailStatus(order.orderNumber, 'disabled', 'MAIL_ENABLED=false или не настроены UNISENDER_API_KEY, BREVO_API_KEY или EMAIL_USER/EMAIL_PASS');
         return;
     }
 
@@ -321,8 +329,7 @@ app.post('/api/mail/test', async (req, res) => {
     try {
         const mailStatus = await sendConfiguredEmail({
             subject: 'Тест уведомлений Арболит',
-            html: '<p>Если вы получили это письмо, уведомления работают.</p>',
-            text: 'Тест уведомлений Арболит: уведомления работают.'
+            html: '<p>Если вы получили это письмо, уведомления работают.</p>'
         });
 
         res.json({
